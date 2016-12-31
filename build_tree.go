@@ -5,7 +5,9 @@ import (
 	"io"
 )
 
-func (f *Forest) BuildTree(r io.Reader) (crypto.Digest, error) {
+// BuildTree takes a reader and saves the data read from it to a Merkle tree in
+// the Forest.
+func (f *Forest) BuildTree(r io.Reader) (*Tree, error) {
 	buf := make([]byte, BlockSize)
 	var err error
 	var ls []crypto.Digest
@@ -31,7 +33,7 @@ func (f *Forest) BuildTree(r io.Reader) (crypto.Digest, error) {
 		lastBlockLen: lbl,
 	}
 	f.writeTree(t)
-	return d, err
+	return t, err
 }
 
 func recursiveBuild(f *Forest, leaves []crypto.Digest) (crypto.Digest, bool) {

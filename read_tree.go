@@ -5,6 +5,7 @@ import (
 	"io"
 )
 
+// ReadAll reads the contents of a tree into a byte slice
 func (t *Tree) ReadAll() []byte {
 	l := int(t.leaves-1)*BlockSize + int(t.lastBlockLen)
 	b := make([]byte, l)
@@ -13,6 +14,8 @@ func (t *Tree) ReadAll() []byte {
 	return b
 }
 
+// ValidationChain is used to validate that a leaf belongs to a tree. It
+// includes all the Uncle digests and the position with in the tree.
 type ValidationChain []*uncle
 
 type uncle struct {
@@ -66,6 +69,7 @@ func recursiveRead(b []byte, startAt *int, d crypto.Digest, isLeaf bool, f *Fore
 	return l + r, err
 }
 
+// GetLeaf returns the ValidationChain and Leaf for a tree.
 func (t *Tree) GetLeaf(lIdx int) (ValidationChain, []byte, error) {
 	vc, l, err := recursiveGetLeaf(uint32(lIdx), 0, t.leaves-1, t.dig, t.isLeaf, t.f)
 	if lbl := int(t.lastBlockLen); lIdx == int(t.leaves)-1 && len(l) > lbl {
@@ -97,10 +101,11 @@ func recursiveGetLeaf(lIdx, start, end uint32, d crypto.Digest, isLeaf bool, f *
 	return append(us, u), l, err
 }
 
-func (t *Tree) ValidateLeaf(us ValidationChain, leaf []byte) bool {
+// ValidateLeaf uses a ValidationChain to confirm that a leaf belongs to a tree
+func (t *Tree) ValidateLeaf(vc ValidationChain, leaf []byte) bool {
 	v := crypto.SHA256(leaf)
 	b := make([]byte, crypto.DigestLength*2)
-	for _, u := range us {
+	for _, u := range vc {
 		if u.left {
 			copy(b, u.dig)
 			copy(b[crypto.DigestLength:], v)
@@ -113,6 +118,8 @@ func (t *Tree) ValidateLeaf(us ValidationChain, leaf []byte) bool {
 	return v.Equal(t.dig)
 }
 
+// Read implements the io.Reader interface to allow a tree to be read into a
+// byte slice
 func (t *Tree) Read(p []byte) (int, error) {
 	startAt := t.pos
 	n, err := recursiveRead(p, &startAt, t.dig, t.isLeaf, t.f, true, int(t.lastBlockLen))

@@ -34,7 +34,7 @@ func TestTree(t *testing.T) {
 		return
 	}
 
-	tr := f.GetTree(td)
+	tr := f.GetTree(td.Digest())
 	if tr == nil {
 		t.Error("Tree is nil")
 		return

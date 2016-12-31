@@ -22,3 +22,4 @@ prove that the leaf belongs to the tree.
 * review exported methods
 * meta-data and config storage
 * seek
+* build tree up from individual leaves
