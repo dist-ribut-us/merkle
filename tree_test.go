@@ -73,7 +73,7 @@ func TestTree(t *testing.T) {
 			return fmt.Errorf("Should not have sub directory")
 		}
 		if info.Size() < BlockSize {
-			return fmt.Errorf("Too Small")
+			return fmt.Errorf("Too Small; Expect: %d Got: %d", BlockSize, info.Size())
 		}
 		return nil
 	})

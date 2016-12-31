@@ -23,3 +23,7 @@ prove that the leaf belongs to the tree.
 * meta-data and config storage
 * seek
 * build tree up from individual leaves
+
+Maybe store data is less than 4096 bytes (after encryption) in a separate
+bucket. It would need to be padded to certain lengths, but it could help with
+efficient storage.
