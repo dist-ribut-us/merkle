@@ -17,12 +17,18 @@ prove that the leaf belongs to the tree.
 [![GoDoc](https://godoc.org/github.com/dist-ribut-us/merkle?status.svg)](https://godoc.org/github.com/dist-ribut-us/merkle)
 
 ### To-do
-* err handling
-* get many blocks and uncles
-* review exported methods
-* meta-data and config storage
-* seek
+Now
 * build tree up from individual leaves
+** tree descriptor
+*** total size
+*** validation chain (includes tree digest)
+* test tree with single leaf
+
+Someday
+* get many blocks and uncles
+* seek
+* err handling
+
 
 Maybe store data is less than 4096 bytes (after encryption) in a separate
 bucket. It would need to be padded to certain lengths, but it could help with

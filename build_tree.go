@@ -25,10 +25,9 @@ func (f *Forest) BuildTree(r io.Reader) (*Tree, error) {
 	if err.Error() == "EOF" {
 		err = nil
 	}
-	d, l := recursiveBuild(f, ls)
+	d, _ := recursiveBuild(f, ls)
 	t := &Tree{
 		dig:          d,
-		isLeaf:       l,
 		leaves:       uint32(len(ls)),
 		lastBlockLen: lbl,
 	}

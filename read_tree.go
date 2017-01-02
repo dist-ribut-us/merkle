@@ -10,7 +10,7 @@ func (t *Tree) ReadAll() []byte {
 	l := int(t.leaves-1)*BlockSize + int(t.lastBlockLen)
 	b := make([]byte, l)
 	startAt := 0
-	recursiveRead(b, &startAt, t.dig, t.isLeaf, t.f, true, int(t.lastBlockLen))
+	recursiveRead(b, &startAt, t.dig, t.leaves == 1, t.f, true, int(t.lastBlockLen))
 	return b
 }
 
@@ -71,7 +71,7 @@ func recursiveRead(b []byte, startAt *int, d crypto.Digest, isLeaf bool, f *Fore
 
 // GetLeaf returns the ValidationChain and Leaf for a tree.
 func (t *Tree) GetLeaf(lIdx int) (ValidationChain, []byte, error) {
-	vc, l, err := recursiveGetLeaf(uint32(lIdx), 0, t.leaves-1, t.dig, t.isLeaf, t.f)
+	vc, l, err := recursiveGetLeaf(uint32(lIdx), 0, t.leaves-1, t.dig, t.leaves == 1, t.f)
 	if lbl := int(t.lastBlockLen); lIdx == int(t.leaves)-1 && len(l) > lbl {
 		l = l[:lbl]
 	}
@@ -122,7 +122,7 @@ func (t *Tree) ValidateLeaf(vc ValidationChain, leaf []byte) bool {
 // byte slice
 func (t *Tree) Read(p []byte) (int, error) {
 	startAt := t.pos
-	n, err := recursiveRead(p, &startAt, t.dig, t.isLeaf, t.f, true, int(t.lastBlockLen))
+	n, err := recursiveRead(p, &startAt, t.dig, t.leaves == 1, t.f, true, int(t.lastBlockLen))
 	t.pos += n
 	return n, err
 }

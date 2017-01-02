@@ -19,6 +19,7 @@ type Forest struct {
 
 var branchBkt = []byte("b")
 var treeBkt = []byte("t")
+var valBkt = []byte("v")
 
 // New creates a new Forest
 func New(dirStr string, key *crypto.Shared) (*Forest, error) {
@@ -30,6 +31,7 @@ func New(dirStr string, key *crypto.Shared) (*Forest, error) {
 				db.Update(func(tx *bolt.Tx) error {
 					tx.CreateBucketIfNotExists(branchBkt)
 					tx.CreateBucketIfNotExists(treeBkt)
+					tx.CreateBucketIfNotExists(valBkt)
 					return nil
 				})
 				f = &Forest{
@@ -77,6 +79,7 @@ func (f *Forest) readBranch(d crypto.Digest) *branch {
 		s = tx.Bucket(branchBkt).Get(cd)
 		return nil
 	})
+	s, _ = f.key.Open(s)
 	b := unmarshalBranch(s)
 	if !b.dig.Equal(d) {
 		// TODO: in this case something has gone very wrong, we should probably at
@@ -87,7 +90,7 @@ func (f *Forest) readBranch(d crypto.Digest) *branch {
 }
 
 func (f *Forest) writeBranch(b *branch) error {
-	s := b.marshal()
+	s := f.key.Seal(b.marshal(), nil)
 	cd := f.key.Seal(b.dig, zeroNonce)[crypto.NonceLength:]
 	return f.db.Update(func(tx *bolt.Tx) error {
 		return tx.Bucket(branchBkt).Put(cd, s)
@@ -132,12 +135,9 @@ func (f *Forest) readLeaf(d crypto.Digest) ([]byte, error) {
 
 func (f *Forest) writeTree(t *Tree) {
 	key := f.key.Seal(t.dig, zeroNonce)[crypto.NonceLength:]
-	b := make([]byte, 7)
+	b := make([]byte, 6)
 	serial.MarshalUint32(t.leaves, b)
 	serial.MarshalUint16(t.lastBlockLen, b[4:])
-	if t.isLeaf {
-		b[6] = 1
-	}
 	val := f.key.Seal(b, nil)
 	f.db.Update(func(tx *bolt.Tx) error {
 		return tx.Bucket(treeBkt).Put(key, val)
@@ -159,13 +159,35 @@ func (f *Forest) GetTree(d crypto.Digest) *Tree {
 	val, _ := f.key.Open(b)
 	l := serial.UnmarshalUint32(val)
 	lbl := serial.UnmarshalUint16(val[4:])
-	var isLeaf bool
-	isLeaf = val[len(val)-1] == 1
 	return &Tree{
 		dig:          d,
-		isLeaf:       isLeaf,
 		leaves:       l,
 		f:            f,
 		lastBlockLen: lbl,
 	}
+}
+
+// SetValue saves a single value to the Bolt Database. It does not use the
+// Merkle tree structure, but provides a simple method to store secure
+// information in the same container as the trees
+func (f *Forest) SetValue(key, value []byte) error {
+	key = f.key.Seal(key, zeroNonce)[crypto.NonceLength:]
+	value = f.key.Seal(value, nil)
+	return f.db.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket(valBkt).Put(key, value)
+	})
+}
+
+// GetValue returns a single value from the Bolt Database stored with SetValue.
+// It does not use the Merkle tree structure, but provides a simple method to
+// store secure information in the same container as the trees
+func (f *Forest) GetValue(key []byte) []byte {
+	key = f.key.Seal(key, zeroNonce)[crypto.NonceLength:]
+	var c []byte
+	f.db.View(func(tx *bolt.Tx) error {
+		c = tx.Bucket(valBkt).Get(key)
+		return nil
+	})
+	value, _ := f.key.Open(c)
+	return value
 }

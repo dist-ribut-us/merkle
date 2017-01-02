@@ -13,7 +13,8 @@ import (
 func TestLeafFilename(t *testing.T) {
 	key, _ := crypto.RandomShared()
 	l := make([]byte, BlockSize)
-	rand.Read(l)
+	_, err := rand.Read(l)
+	assert.NoError(t, err)
 	d := crypto.SHA256(l)
 	cd := key.Seal(d, zeroNonce)[crypto.NonceLength:]
 	filename := hex.EncodeToString(cd)
@@ -24,7 +25,7 @@ func TestLeafFilename(t *testing.T) {
 }
 
 func TestForest(t *testing.T) {
-	dirStr := "forestTest"
+	dirStr := "TestForest"
 	key, err := crypto.RandomShared()
 	if !assert.NoError(t, err) {
 		return
@@ -80,6 +81,34 @@ func TestForest(t *testing.T) {
 	} else {
 		assert.Equal(t, b1, b2)
 	}
+
+	f.Close()
+	assert.NoError(t, os.RemoveAll(dirStr))
+}
+
+func TestValue(t *testing.T) {
+	dirStr := "TestValue"
+	key, err := crypto.RandomShared()
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	f, err := New(dirStr, key)
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	k := make([]byte, 20)
+	v := make([]byte, 200)
+
+	_, err = rand.Read(k)
+	assert.NoError(t, err)
+	_, err = rand.Read(v)
+	assert.NoError(t, err)
+
+	f.SetValue(k, v)
+	out := f.GetValue(k)
+	assert.Equal(t, v, out)
 
 	f.Close()
 	assert.NoError(t, os.RemoveAll(dirStr))

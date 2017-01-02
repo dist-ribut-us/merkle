@@ -15,7 +15,6 @@ const BlockSize = 8112
 // Merkle tree.
 type Tree struct {
 	dig          crypto.Digest
-	isLeaf       bool
 	leaves       uint32
 	f            *Forest
 	lastBlockLen uint16
