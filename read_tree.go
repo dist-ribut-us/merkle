@@ -102,10 +102,17 @@ func recursiveGetLeaf(lIdx, start, end uint32, d crypto.Digest, isLeaf bool, f *
 }
 
 // ValidateLeaf uses a ValidationChain to confirm that a leaf belongs to a tree
-func (t *Tree) ValidateLeaf(vc ValidationChain, leaf []byte) bool {
+func (t *Tree) ValidateLeaf(vc ValidationChain, leaf []byte, lIdx int) bool {
 	v := crypto.SHA256(leaf)
 	b := make([]byte, crypto.DigestLength*2)
-	for _, u := range vc {
+	dirs := dirChain(uint32(lIdx), 0, t.leaves-1)
+	if len(dirs) != len(vc) {
+		return false
+	}
+	for i, u := range vc {
+		if u.left != dirs[i] {
+			return false
+		}
 		if u.left {
 			copy(b, u.dig)
 			copy(b[crypto.DigestLength:], v)
@@ -116,6 +123,20 @@ func (t *Tree) ValidateLeaf(vc ValidationChain, leaf []byte) bool {
 		v = crypto.SHA256(b)
 	}
 	return v.Equal(t.dig)
+}
+
+func dirChain(lIdx, start, end uint32) []bool {
+	if start == end {
+		return nil
+	}
+	if end-start == 1 {
+		return []bool{lIdx == end}
+	}
+	mid := (start + end) / 2
+	if lIdx < mid {
+		return append(dirChain(lIdx, start, mid-1), false)
+	}
+	return append(dirChain(lIdx, mid, end), true)
 }
 
 // Read implements the io.Reader interface to allow a tree to be read into a

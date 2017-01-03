@@ -59,7 +59,7 @@ func TestTree(t *testing.T) {
 			t.Log(l[:10])
 			t.Errorf("Block %d is not equal", i)
 		}
-		assert.True(t, tr.ValidateLeaf(vc, l))
+		assert.True(t, tr.ValidateLeaf(vc, l, i))
 	}
 
 	// --- Test File Size ---

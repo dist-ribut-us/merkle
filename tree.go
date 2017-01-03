@@ -24,3 +24,9 @@ type Tree struct {
 // Digest gives the Digest that identifies the tree. This can be used to request
 // the tree from a forest.
 func (t *Tree) Digest() crypto.Digest { return t.dig }
+
+type Sapling struct {
+	leaves      uint32
+	dig         crypto.Digest
+	leafDigests []crypto.Digest
+}
