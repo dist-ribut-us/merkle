@@ -21,16 +21,16 @@ Now
 * in leaf validaiton, confirm dirs based on leaf idx
 * uncle.left is actually uncle.right... fix it
 * build tree up from individual leaves
-* * tree descriptor
-* * * total size
-* * * validation chain (includes tree digest)
+  * tree descriptor
+    * total size
+    * validation chain (includes tree digest)
 * test tree with single leaf
 
 Someday
 * get many blocks and uncles
 * timestamp on tree
-* * ttl : erase tree after a certain point
-* * accessed : erase oldest trees to clear space 
+  * ttl : erase tree after a certain point
+  * accessed : erase oldest trees to clear space 
 * seek
 * err handling
 
