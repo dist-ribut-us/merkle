@@ -26,7 +26,19 @@ type Tree struct {
 func (t *Tree) Digest() crypto.Digest { return t.dig }
 
 type Sapling struct {
-	leaves      uint32
-	dig         crypto.Digest
-	leafDigests []crypto.Digest
+	leaves       uint32
+	dig          crypto.Digest
+	leafDigests  map[int]crypto.Digest
+	f            *Forest
+	lastBlockLen uint16
+}
+
+func (f *Forest) New(d crypto.Digest, l uint32) *Sapling {
+	return &Sapling{
+		leaves:       l,
+		dig:          d,
+		f:            f,
+		lastBlockLen: BlockSize,
+		leafDigests:  make(map[int]crypto.Digest),
+	}
 }

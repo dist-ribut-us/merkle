@@ -18,11 +18,7 @@ prove that the leaf belongs to the tree.
 
 ### To-do
 Now
-* build tree up from individual leaves
-  * tree descriptor
-    * total size
-    * validation chain (includes tree digest)
-* test tree with single leaf
+* save/retreive sapling
 
 Someday
 * get many blocks and uncles

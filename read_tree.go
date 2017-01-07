@@ -109,9 +109,17 @@ func recursiveGetLeaf(lIdx, start, end uint32, d crypto.Digest, isLeaf bool, f *
 
 // ValidateLeaf uses a ValidationChain to confirm that a leaf belongs to a tree
 func (t *Tree) ValidateLeaf(vc ValidationChain, leaf []byte, lIdx int) bool {
+	return validateLeaf(vc, leaf, lIdx, t.dig, t.leaves)
+}
+
+func (s *Sapling) ValidateLeaf(vc ValidationChain, leaf []byte, lIdx int) bool {
+	return validateLeaf(vc, leaf, lIdx, s.dig, s.leaves)
+}
+
+func validateLeaf(vc ValidationChain, leaf []byte, lIdx int, d crypto.Digest, ln uint32) bool {
 	v := crypto.SHA256(leaf)
 	b := make([]byte, crypto.DigestLength*2)
-	dirs := dirChain(uint32(lIdx), 0, t.leaves)
+	dirs := dirChain(uint32(lIdx), 0, ln)
 	if len(dirs) != len(vc) {
 		return false
 	}
@@ -129,7 +137,7 @@ func (t *Tree) ValidateLeaf(vc ValidationChain, leaf []byte, lIdx int) bool {
 		v = crypto.SHA256(b)
 	}
 
-	return v.Equal(t.dig)
+	return v.Equal(d)
 }
 
 func dirChain(lIdx, start, end uint32) []bool {

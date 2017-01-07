@@ -26,18 +26,18 @@ func TestTree(t *testing.T) {
 
 	// Code can take different paths depending on the size of the tree so we run
 	// the test many times with different tree sizes to hit many different lengths
-	for size := 1000; size < BlockSize*10; size += BlockSize / 2 {
+	for size := 1000; size < BlockSize*10; size += 4000 {
 		data := make([]byte, size)
 		rand.Read(data)
 
 		reader := bytes.NewReader(data)
 
-		td, err := f.BuildTree(reader)
+		tr, err := f.BuildTree(reader)
 		if !assert.NoError(t, err) {
 			return
 		}
 
-		tr := f.GetTree(td.Digest())
+		tr = f.GetTree(tr.Digest())
 		if tr == nil {
 			t.Error("Tree is nil")
 			return
@@ -98,4 +98,64 @@ func TestTree(t *testing.T) {
 
 	f.Close()
 	assert.NoError(t, os.RemoveAll(dirStr))
+}
+
+func TestSapling(t *testing.T) {
+	fromDir := "fromDir"
+	toDir := "toDir"
+
+	fromKey, err := crypto.RandomShared()
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	fFrom, err := New(fromDir, fromKey)
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	toKey, err := crypto.RandomShared()
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	fTo, err := New(toDir, toKey)
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	data := make([]byte, (8*BlockSize)/3)
+	rand.Read(data)
+
+	reader := bytes.NewReader(data)
+
+	tr, err := fFrom.BuildTree(reader)
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	var tOut *Tree
+	s := fTo.New(tr.Digest(), tr.leaves)
+	for i := 0; i < int(tr.leaves); i++ {
+		vc, l, err := tr.GetLeaf(i)
+		assert.NoError(t, err)
+
+		tOut = s.AddLeaf(vc, l, i)
+		if i < int(tr.leaves)-1 && tOut != nil {
+			t.Error("Tree should not be complete")
+		}
+	}
+	assert.NotNil(t, tOut)
+
+	assert.Equal(t, tr.lastBlockLen, tOut.lastBlockLen)
+
+	a := tr.ReadAll()
+	b := tOut.ReadAll()
+	assert.Equal(t, a, b)
+
+	fFrom.Close()
+	assert.NoError(t, os.RemoveAll(fromDir))
+
+	fTo.Close()
+	assert.NoError(t, os.RemoveAll(toDir))
 }

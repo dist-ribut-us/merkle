@@ -30,6 +30,7 @@ func (f *Forest) BuildTree(r io.Reader) (*Tree, error) {
 		dig:          d,
 		leaves:       uint32(len(ls)),
 		lastBlockLen: lbl,
+		f:            f,
 	}
 	f.writeTree(t)
 	return t, err
@@ -53,4 +54,39 @@ func recursiveBuild(f *Forest, leaves []crypto.Digest) (crypto.Digest, bool) {
 	br := newBranch(lb, rb, p)
 	f.writeBranch(br)
 	return br.dig, false
+}
+
+func (s *Sapling) AddLeaf(vc ValidationChain, leaf []byte, lIdx int) *Tree {
+	if _, isSet := s.leafDigests[lIdx]; isSet {
+		return nil
+	}
+	if !s.ValidateLeaf(vc, leaf, lIdx) {
+		return nil
+	}
+	l := len(leaf)
+	if l < BlockSize {
+		// the only block that can be less than BlockSize is the last block
+		s.lastBlockLen = uint16(l)
+		pad := make([]byte, BlockSize-l)
+		leaf = append(leaf, pad...)
+	}
+	d, _ := s.f.writeLeaf(leaf, l)
+	s.leafDigests[lIdx] = d
+	if uint32(len(s.leafDigests)) < s.leaves {
+		return nil
+	}
+
+	ls := make([]crypto.Digest, s.leaves)
+	for i := range ls {
+		ls[i] = s.leafDigests[i]
+	}
+	recursiveBuild(s.f, ls)
+	t := &Tree{
+		dig:          s.dig,
+		leaves:       s.leaves,
+		lastBlockLen: s.lastBlockLen,
+		f:            s.f,
+	}
+	s.f.writeTree(t)
+	return t
 }
