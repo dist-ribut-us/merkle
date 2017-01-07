@@ -71,7 +71,7 @@ func recursiveRead(b []byte, startAt *int, d crypto.Digest, isLeaf bool, f *Fore
 
 // GetLeaf returns the ValidationChain and Leaf for a tree.
 func (t *Tree) GetLeaf(lIdx int) (ValidationChain, []byte, error) {
-	vc, l, err := recursiveGetLeaf(uint32(lIdx), 0, t.leaves-1, t.dig, t.leaves == 1, t.f)
+	vc, l, err := recursiveGetLeaf(uint32(lIdx), 0, t.leaves, t.dig, t.leaves == 1, t.f)
 	if lbl := int(t.lastBlockLen); lIdx == int(t.leaves)-1 && len(l) > lbl {
 		l = l[:lbl]
 	}
@@ -85,18 +85,24 @@ func recursiveGetLeaf(lIdx, start, end uint32, d crypto.Digest, isLeaf bool, f *
 	}
 	b := f.readBranch(d)
 	mid := (start + end) / 2
+	var left bool
+	var ud crypto.Digest
 	if lIdx < mid || lIdx == start {
-		us, l, err := recursiveGetLeaf(lIdx, start, mid, b.left, b.lIsLeaf(), f)
-		u := &uncle{
-			dig:  b.right,
-			left: false,
-		}
-		return append(us, u), l, err
+		end = mid
+		d = b.left
+		ud = b.right
+		isLeaf = b.lIsLeaf()
+		left = true
+	} else {
+		start = mid
+		d = b.right
+		ud = b.left
+		isLeaf = b.rIsLeaf()
 	}
-	us, l, err := recursiveGetLeaf(lIdx, mid, end, b.right, b.rIsLeaf(), f)
+	us, l, err := recursiveGetLeaf(lIdx, start, end, d, isLeaf, f)
 	u := &uncle{
-		dig:  b.left,
-		left: true,
+		dig:  ud,
+		left: left,
 	}
 	return append(us, u), l, err
 }
@@ -105,7 +111,7 @@ func recursiveGetLeaf(lIdx, start, end uint32, d crypto.Digest, isLeaf bool, f *
 func (t *Tree) ValidateLeaf(vc ValidationChain, leaf []byte, lIdx int) bool {
 	v := crypto.SHA256(leaf)
 	b := make([]byte, crypto.DigestLength*2)
-	dirs := dirChain(uint32(lIdx), 0, t.leaves-1)
+	dirs := dirChain(uint32(lIdx), 0, t.leaves)
 	if len(dirs) != len(vc) {
 		return false
 	}
@@ -114,14 +120,15 @@ func (t *Tree) ValidateLeaf(vc ValidationChain, leaf []byte, lIdx int) bool {
 			return false
 		}
 		if u.left {
-			copy(b, u.dig)
-			copy(b[crypto.DigestLength:], v)
-		} else {
 			copy(b, v)
 			copy(b[crypto.DigestLength:], u.dig)
+		} else {
+			copy(b, u.dig)
+			copy(b[crypto.DigestLength:], v)
 		}
 		v = crypto.SHA256(b)
 	}
+
 	return v.Equal(t.dig)
 }
 
@@ -130,13 +137,13 @@ func dirChain(lIdx, start, end uint32) []bool {
 		return nil
 	}
 	if end-start == 1 {
-		return []bool{lIdx == end}
+		return nil
 	}
 	mid := (start + end) / 2
 	if lIdx < mid {
-		return append(dirChain(lIdx, start, mid-1), false)
+		return append(dirChain(lIdx, start, mid), true)
 	}
-	return append(dirChain(lIdx, mid, end), true)
+	return append(dirChain(lIdx, mid, end), false)
 }
 
 // Read implements the io.Reader interface to allow a tree to be read into a

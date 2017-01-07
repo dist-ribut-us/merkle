@@ -13,11 +13,6 @@ import (
 )
 
 func TestTree(t *testing.T) {
-	data := make([]byte, (BlockSize*5)/2)
-	rand.Read(data)
-
-	reader := bytes.NewReader(data)
-
 	dirStr := "treeTest"
 	key, err := crypto.RandomShared()
 	if !assert.NoError(t, err) {
@@ -29,68 +24,76 @@ func TestTree(t *testing.T) {
 		return
 	}
 
-	td, err := f.BuildTree(reader)
-	if !assert.NoError(t, err) {
-		return
-	}
+	// Code can take different paths depending on the size of the tree so we run
+	// the test many times with different tree sizes to hit many different lengths
+	for size := 1000; size < BlockSize*10; size += BlockSize / 2 {
+		data := make([]byte, size)
+		rand.Read(data)
 
-	tr := f.GetTree(td.Digest())
-	if tr == nil {
-		t.Error("Tree is nil")
-		return
-	}
+		reader := bytes.NewReader(data)
 
-	// --- Test ReadAll ---
-	assert.Equal(t, data, tr.ReadAll())
-	assert.Equal(t, uint32(3), tr.leaves)
-
-	// --- Test GetLeaf ---
-	for i := 0; i < int(tr.leaves); i++ {
-		vc, l, err := tr.GetLeaf(i)
+		td, err := f.BuildTree(reader)
 		if !assert.NoError(t, err) {
 			return
 		}
-		st := BlockSize * i
-		ed := st + len(l)
-		if len(data) < ed {
-			t.Errorf("%d: Block is too short: is %d, should be at least %d (%d)", i, len(data), ed, len(l))
-		} else if !bytes.Equal(data[st:ed], l) {
-			t.Log(data[st : st+10])
-			t.Log(l[:10])
-			t.Errorf("Block %d is not equal", i)
-		}
-		assert.True(t, tr.ValidateLeaf(vc, l, i))
-	}
 
-	// --- Test File Size ---
-	// Every file should be larger than the BlockSize because it should be a full
-	// block plus the MAC.
-	err = filepath.Walk(dirStr, func(path string, info os.FileInfo, err error) error {
-		if strings.HasSuffix(path, ".db") || path == dirStr {
+		tr := f.GetTree(td.Digest())
+		if tr == nil {
+			t.Error("Tree is nil")
+			return
+		}
+
+		// --- Test ReadAll ---
+		assert.Equal(t, data, tr.ReadAll())
+
+		// --- Test GetLeaf ---
+		for i := 0; i < int(tr.leaves); i++ {
+			vc, l, err := tr.GetLeaf(i)
+			if !assert.NoError(t, err) {
+				return
+			}
+			st := BlockSize * i
+			ed := st + len(l)
+			if len(data) < ed {
+				t.Errorf("%d: Block is too short: is %d, should be at least %d (%d)", i, len(data), ed, len(l))
+			} else if !bytes.Equal(data[st:ed], l) {
+				t.Log(data[st : st+10])
+				t.Log(l[:10])
+				t.Errorf("Block %d is not equal", i)
+			}
+			assert.True(t, tr.ValidateLeaf(vc, l, i))
+		}
+
+		// --- Test File Size ---
+		// Every file should be larger than the BlockSize because it should be a full
+		// block plus the MAC.
+		err = filepath.Walk(dirStr, func(path string, info os.FileInfo, err error) error {
+			if strings.HasSuffix(path, ".db") || path == dirStr {
+				return nil
+			}
+			if info.IsDir() {
+				return fmt.Errorf("Should not have sub directory")
+			}
+			if info.Size() < BlockSize {
+				return fmt.Errorf("Too Small; Expect: %d Got: %d", BlockSize, info.Size())
+			}
 			return nil
-		}
-		if info.IsDir() {
-			return fmt.Errorf("Should not have sub directory")
-		}
-		if info.Size() < BlockSize {
-			return fmt.Errorf("Too Small; Expect: %d Got: %d", BlockSize, info.Size())
-		}
-		return nil
-	})
-	assert.NoError(t, err)
+		})
+		assert.NoError(t, err)
 
-	// --- Test Read ---
-	out := make([]byte, 1000)
-	p := 0
-	for l, err := tr.Read(out); err == nil; l, err = tr.Read(out) {
-		if p+l > len(data) {
-			t.Error("Wrong Length")
-			break
+		// --- Test Read ---
+		out := make([]byte, 1000)
+		p := 0
+		for l, err := tr.Read(out); err == nil; l, err = tr.Read(out) {
+			if p+l > len(data) {
+				t.Error("Wrong Length")
+				break
+			}
+			if !bytes.Equal(out[:l], data[p:p+l]) {
+				t.Errorf("Not Equal: %d:%d", p, p+l)
+			}
+			p += l
 		}
-		if !bytes.Equal(out[:l], data[p:p+l]) {
-			t.Errorf("Not Equal: %d:%d", p, p+l)
-		}
-		p += l
 	}
 
 	f.Close()

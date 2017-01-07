@@ -18,8 +18,6 @@ prove that the leaf belongs to the tree.
 
 ### To-do
 Now
-* in leaf validaiton, confirm dirs based on leaf idx
-* uncle.left is actually uncle.right... fix it
 * build tree up from individual leaves
   * tree descriptor
     * total size
