@@ -112,6 +112,8 @@ func (t *Tree) ValidateLeaf(vc ValidationChain, leaf []byte, lIdx int) bool {
 	return validateLeaf(vc, leaf, lIdx, t.dig, t.leaves)
 }
 
+// ValidateLeaf uses a ValidationChain to confirm that a leaf belongs to a
+// sapling
 func (s *Sapling) ValidateLeaf(vc ValidationChain, leaf []byte, lIdx int) bool {
 	return validateLeaf(vc, leaf, lIdx, s.dig, s.leaves)
 }

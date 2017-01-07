@@ -56,6 +56,8 @@ func recursiveBuild(f *Forest, leaves []crypto.Digest) (crypto.Digest, bool) {
 	return br.dig, false
 }
 
+// AddLeaf will add a validated leaf to a Sapling. If the sapling is completed
+// by the action, the tree will be returned, otherwise nil is returned.
 func (s *Sapling) AddLeaf(vc ValidationChain, leaf []byte, lIdx int) *Tree {
 	if _, isSet := s.leafDigests[lIdx]; isSet {
 		return nil

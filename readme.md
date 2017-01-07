@@ -18,7 +18,9 @@ prove that the leaf belongs to the tree.
 
 ### To-do
 Now
-* save/retreive sapling
+* Merge tree & sapling : there's a lot of overlap. It would be much cleaner to 
+  have a single struct and track which leaves are missing. Also requires
+  building branches as we go.
 
 Someday
 * get many blocks and uncles
