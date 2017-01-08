@@ -84,18 +84,19 @@ func (t *Tree) AddLeaf(vc ValidationChain, leaf []byte, lIdx int) {
 	// save branches
 	isLeaf := true
 	var br *branch
-	for _, u := range vc {
+	dirs := dirChain(uint32(lIdx), 0, t.leaves)
+	for i, vd := range vc {
 		var p byte
-		if u.left {
+		if dirs[i] {
 			if isLeaf {
 				p = lLeafMask
 			}
-			br = getOrCreateBranch(v, u.dig, p, t.f)
+			br = getOrCreateBranch(v, vd, p, t.f)
 		} else {
 			if isLeaf {
 				p = rLeafMask
 			}
-			br = getOrCreateBranch(u.dig, v, p, t.f)
+			br = getOrCreateBranch(vd, v, p, t.f)
 		}
 		v = br.dig
 		isLeaf = false

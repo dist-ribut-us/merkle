@@ -22,12 +22,7 @@ func (t *Tree) ReadAll() ([]byte, error) {
 
 // ValidationChain is used to validate that a leaf belongs to a tree. It
 // includes all the Uncle digests and the position with in the tree.
-type ValidationChain []*uncle
-
-type uncle struct {
-	dig  crypto.Digest
-	left bool
-}
+type ValidationChain []crypto.Digest
 
 func recursiveRead(b []byte, startAt *int, d crypto.Digest, isLeaf bool, f *Forest, rightMost bool, lastLen int) (int, error) {
 	// startAt is a bit confusing, if we're starting at position 1000, we add the
@@ -84,21 +79,19 @@ func (t *Tree) GetLeaf(lIdx int) (ValidationChain, []byte, error) {
 	return vc, l, err
 }
 
-func recursiveGetLeaf(lIdx, start, end uint32, d crypto.Digest, isLeaf bool, f *Forest) ([]*uncle, []byte, error) {
+func recursiveGetLeaf(lIdx, start, end uint32, d crypto.Digest, isLeaf bool, f *Forest) ([]crypto.Digest, []byte, error) {
 	if isLeaf {
 		l, err := f.readLeaf(d)
 		return nil, l, err
 	}
 	b := f.readBranch(d)
 	mid := (start + end) / 2
-	var left bool
 	var ud crypto.Digest
 	if lIdx < mid || lIdx == start {
 		end = mid
 		d = b.left
 		ud = b.right
 		isLeaf = b.lIsLeaf()
-		left = true
 	} else {
 		start = mid
 		d = b.right
@@ -106,11 +99,7 @@ func recursiveGetLeaf(lIdx, start, end uint32, d crypto.Digest, isLeaf bool, f *
 		isLeaf = b.rIsLeaf()
 	}
 	us, l, err := recursiveGetLeaf(lIdx, start, end, d, isLeaf, f)
-	u := &uncle{
-		dig:  ud,
-		left: left,
-	}
-	return append(us, u), l, err
+	return append(us, ud), l, err
 }
 
 // ValidateLeaf uses a ValidationChain to confirm that a leaf belongs to a tree
@@ -125,15 +114,12 @@ func validateLeaf(vc ValidationChain, leaf []byte, lIdx int, d crypto.Digest, ln
 	if len(dirs) != len(vc) {
 		return false
 	}
-	for i, u := range vc {
-		if u.left != dirs[i] {
-			return false
-		}
-		if u.left {
+	for i, vd := range vc {
+		if dirs[i] {
 			copy(b, v)
-			copy(b[crypto.DigestLength:], u.dig)
+			copy(b[crypto.DigestLength:], vd)
 		} else {
-			copy(b, u.dig)
+			copy(b, vd)
 			copy(b[crypto.DigestLength:], v)
 		}
 		v = crypto.SHA256(b)

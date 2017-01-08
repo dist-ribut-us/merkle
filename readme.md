@@ -19,6 +19,8 @@ prove that the leaf belongs to the tree.
 ### To-do
 Now
 * Remove dirs from validation chain
+* test reading leaves from incomplete tree
+* get digest without copy (crypto.Digester)
 
 Someday
 * get many blocks and uncles
