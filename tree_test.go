@@ -44,7 +44,11 @@ func TestTree(t *testing.T) {
 		}
 
 		// --- Test ReadAll ---
-		assert.Equal(t, data, tr.ReadAll())
+		dataOut, err := tr.ReadAll()
+		if !assert.NoError(t, err) {
+			break
+		}
+		assert.Equal(t, data, dataOut)
 
 		// --- Test GetLeaf ---
 		for i := 0; i < int(tr.leaves); i++ {
@@ -134,24 +138,32 @@ func TestSapling(t *testing.T) {
 		return
 	}
 
-	var tOut *Tree
-	s := fTo.New(tr.Digest(), tr.leaves)
+	tOut := fTo.New(tr.Digest(), tr.leaves)
 	for i := 0; i < int(tr.leaves); i++ {
 		vc, l, err := tr.GetLeaf(i)
 		assert.NoError(t, err)
 
-		tOut = s.AddLeaf(vc, l, i)
-		if i < int(tr.leaves)-1 && tOut != nil {
-			t.Error("Tree should not be complete")
+		tOut.AddLeaf(vc, l, i)
+		if i < int(tr.leaves)-1 {
+			if tOut.complete {
+
+				t.Error("Tree should not be complete")
+			} else {
+				// Confirm Read and ReadAll throw ErrIncomplete
+				_, err := tOut.Read(make([]byte, 10))
+				assert.Equal(t, ErrIncomplete, err)
+				_, err = tOut.ReadAll()
+				assert.Equal(t, ErrIncomplete, err)
+			}
 		}
 	}
 	assert.NotNil(t, tOut)
 
 	assert.Equal(t, tr.lastBlockLen, tOut.lastBlockLen)
 
-	a := tr.ReadAll()
-	b := tOut.ReadAll()
-	assert.Equal(t, a, b)
+	tOutData, err := tOut.ReadAll()
+	assert.NoError(t, err)
+	assert.Equal(t, data, tOutData)
 
 	fFrom.Close()
 	assert.NoError(t, os.RemoveAll(fromDir))

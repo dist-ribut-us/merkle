@@ -138,9 +138,21 @@ func (f *Forest) readLeaf(d crypto.Digest) ([]byte, error) {
 
 func (f *Forest) writeTree(t *Tree) {
 	key := f.key.Seal(t.dig, zeroNonce)[crypto.NonceLength:]
-	b := make([]byte, 6)
+	l := 7
+	if !t.complete {
+		l += 4 + (int(t.leaves) / 8)
+		if t.leaves%8 != 0 {
+			l++
+		}
+	}
+	b := make([]byte, l)
 	serial.MarshalUint32(t.leaves, b)
 	serial.MarshalUint16(t.lastBlockLen, b[4:])
+	if t.complete {
+		b[6] = 1
+	} else {
+		serial.MarshalBoolSlice(t.leavesComplete, b[7:])
+	}
 	val := f.key.Seal(b, nil)
 	f.db.Update(func(tx *bolt.Tx) error {
 		return tx.Bucket(treeBkt).Put(key, val)
@@ -156,17 +168,24 @@ func (f *Forest) GetTree(d crypto.Digest) *Tree {
 		b = tx.Bucket(treeBkt).Get(key)
 		return nil
 	})
-	if len(b) == 0 {
+	if len(b) < 7 {
 		return nil
 	}
 	val, _ := f.key.Open(b)
 	l := serial.UnmarshalUint32(val)
 	lbl := serial.UnmarshalUint16(val[4:])
+	complete := val[6] == 1
+	var leavesComplete []bool
+	if !complete {
+		leavesComplete = serial.UnmarshalBoolSlice(val[7:])
+	}
 	return &Tree{
-		dig:          d,
-		leaves:       l,
-		f:            f,
-		lastBlockLen: lbl,
+		dig:            d,
+		leaves:         l,
+		f:              f,
+		lastBlockLen:   lbl,
+		complete:       complete,
+		leavesComplete: leavesComplete,
 	}
 }
 

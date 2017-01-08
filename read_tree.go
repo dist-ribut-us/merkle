@@ -1,17 +1,23 @@
 package merkle
 
 import (
+	"errors"
 	"github.com/dist-ribut-us/crypto"
 	"io"
 )
 
+var ErrIncomplete = errors.New("Tree is incomplete")
+
 // ReadAll reads the contents of a tree into a byte slice
-func (t *Tree) ReadAll() []byte {
+func (t *Tree) ReadAll() ([]byte, error) {
+	if !t.complete {
+		return nil, ErrIncomplete
+	}
 	l := int(t.leaves-1)*BlockSize + int(t.lastBlockLen)
 	b := make([]byte, l)
 	startAt := 0
-	recursiveRead(b, &startAt, t.dig, t.leaves == 1, t.f, true, int(t.lastBlockLen))
-	return b
+	_, err := recursiveRead(b, &startAt, t.dig, t.leaves == 1, t.f, true, int(t.lastBlockLen))
+	return b, err
 }
 
 // ValidationChain is used to validate that a leaf belongs to a tree. It
@@ -112,12 +118,6 @@ func (t *Tree) ValidateLeaf(vc ValidationChain, leaf []byte, lIdx int) bool {
 	return validateLeaf(vc, leaf, lIdx, t.dig, t.leaves)
 }
 
-// ValidateLeaf uses a ValidationChain to confirm that a leaf belongs to a
-// sapling
-func (s *Sapling) ValidateLeaf(vc ValidationChain, leaf []byte, lIdx int) bool {
-	return validateLeaf(vc, leaf, lIdx, s.dig, s.leaves)
-}
-
 func validateLeaf(vc ValidationChain, leaf []byte, lIdx int, d crypto.Digest, ln uint32) bool {
 	v := crypto.SHA256(leaf)
 	b := make([]byte, crypto.DigestLength*2)
@@ -159,6 +159,9 @@ func dirChain(lIdx, start, end uint32) []bool {
 // Read implements the io.Reader interface to allow a tree to be read into a
 // byte slice
 func (t *Tree) Read(p []byte) (int, error) {
+	if !t.complete {
+		return 0, ErrIncomplete
+	}
 	startAt := t.pos
 	n, err := recursiveRead(p, &startAt, t.dig, t.leaves == 1, t.f, true, int(t.lastBlockLen))
 	t.pos += n

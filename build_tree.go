@@ -31,6 +31,7 @@ func (f *Forest) BuildTree(r io.Reader) (*Tree, error) {
 		leaves:       uint32(len(ls)),
 		lastBlockLen: lbl,
 		f:            f,
+		complete:     true,
 	}
 	f.writeTree(t)
 	return t, err
@@ -58,27 +59,27 @@ func recursiveBuild(f *Forest, leaves []crypto.Digest) (crypto.Digest, bool) {
 
 // AddLeaf will add a validated leaf to a Sapling. If the sapling is completed
 // by the action, the tree will be returned, otherwise nil is returned.
-func (s *Sapling) AddLeaf(vc ValidationChain, leaf []byte, lIdx int) *Tree {
-	if lIdx >= int(s.leaves) {
-		return nil
+func (t *Tree) AddLeaf(vc ValidationChain, leaf []byte, lIdx int) {
+	if lIdx >= int(t.leaves) {
+		return
 	}
-	if isSet := s.leavesComplete[lIdx]; isSet {
-		return nil
+	if isSet := t.leavesComplete[lIdx]; isSet {
+		return
 	}
-	if !s.ValidateLeaf(vc, leaf, lIdx) {
-		return nil
+	if !t.ValidateLeaf(vc, leaf, lIdx) {
+		return
 	}
 	l := len(leaf)
 	if l < BlockSize {
 		// the only block that can be less than BlockSize is the last block
-		s.lastBlockLen = uint16(l)
+		t.lastBlockLen = uint16(l)
 		pad := make([]byte, BlockSize-l)
 		leaf = append(leaf, pad...)
 	}
 
 	// save Leaf
-	v, _ := s.f.writeLeaf(leaf, l)
-	s.leavesComplete[lIdx] = true
+	v, _ := t.f.writeLeaf(leaf, l)
+	t.leavesComplete[lIdx] = true
 
 	// save branches
 	isLeaf := true
@@ -89,30 +90,26 @@ func (s *Sapling) AddLeaf(vc ValidationChain, leaf []byte, lIdx int) *Tree {
 			if isLeaf {
 				p = lLeafMask
 			}
-			br = getOrCreateBranch(v, u.dig, p, s.f)
+			br = getOrCreateBranch(v, u.dig, p, t.f)
 		} else {
 			if isLeaf {
 				p = rLeafMask
 			}
-			br = getOrCreateBranch(u.dig, v, p, s.f)
+			br = getOrCreateBranch(u.dig, v, p, t.f)
 		}
 		v = br.dig
 		isLeaf = false
 	}
 
-	for _, leafComplete := range s.leavesComplete {
+	// compute if complete, save tree
+	t.complete = true
+	for _, leafComplete := range t.leavesComplete {
 		if !leafComplete {
-			return nil
+			t.complete = false
+			break
 		}
 	}
-	t := &Tree{
-		dig:          s.dig,
-		leaves:       s.leaves,
-		lastBlockLen: s.lastBlockLen,
-		f:            s.f,
-	}
-	s.f.writeTree(t)
-	return t
+	t.f.writeTree(t)
 }
 
 func getOrCreateBranch(l, r crypto.Digest, p byte, f *Forest) *branch {

@@ -18,10 +18,7 @@ prove that the leaf belongs to the tree.
 
 ### To-do
 Now
-* For sapling, save branch as you go (See Notes)
-* Merge tree & sapling : there's a lot of overlap. It would be much cleaner to 
-  have a single struct and track which leaves are missing. Also requires
-  building branches as we go.
+* Remove dirs from validation chain
 
 Someday
 * get many blocks and uncles
@@ -36,4 +33,4 @@ bucket. It would need to be padded to certain lengths, but it could help with
 efficient storage.
 
 #### Partial Trees
-Read and ReadAll will simply not work on an incomplete tree
+Read and ReadAll will simply not work on an incomplete tree.

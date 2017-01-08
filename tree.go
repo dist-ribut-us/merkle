@@ -14,34 +14,31 @@ const BlockSize = 8112
 // Tree is how a resource is stored. It represents the top level digest of a
 // Merkle tree.
 type Tree struct {
-	dig          crypto.Digest
-	leaves       uint32
-	f            *Forest
-	lastBlockLen uint16
-	pos          int
+	dig            crypto.Digest
+	leaves         uint32
+	f              *Forest
+	lastBlockLen   uint16
+	pos            int
+	complete       bool
+	leavesComplete []bool
 }
 
 // Digest gives the Digest that identifies the tree. This can be used to request
 // the tree from a forest.
 func (t *Tree) Digest() crypto.Digest { return t.dig }
 
-// Sapling represents a tree that does not yet have all it's leaves.
-type Sapling struct {
-	leaves         uint32
-	dig            crypto.Digest
-	leavesComplete []bool
-	f              *Forest
-	lastBlockLen   uint16
-}
+// Complete returns true if the tree has all it's leaves.
+func (t *Tree) Complete() bool { return t.complete }
 
-// New returns a Sapling, when all the leaves have been added, it will become a
-// tree.
-func (f *Forest) New(d crypto.Digest, l uint32) *Sapling {
-	return &Sapling{
+// New returns a new Tree
+func (f *Forest) New(d crypto.Digest, l uint32) *Tree {
+	t := &Tree{
 		leaves:         l,
 		dig:            d,
 		f:              f,
 		lastBlockLen:   BlockSize,
 		leavesComplete: make([]bool, l),
 	}
+	f.writeTree(t)
+	return t
 }
