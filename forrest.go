@@ -79,6 +79,9 @@ func (f *Forest) readBranch(d crypto.Digest) *branch {
 		s = tx.Bucket(branchBkt).Get(cd)
 		return nil
 	})
+	if s == nil {
+		return nil
+	}
 	s, _ = f.key.Open(s)
 	b := unmarshalBranch(s)
 	if !b.dig.Equal(d) {

@@ -27,21 +27,21 @@ func (t *Tree) Digest() crypto.Digest { return t.dig }
 
 // Sapling represents a tree that does not yet have all it's leaves.
 type Sapling struct {
-	leaves       uint32
-	dig          crypto.Digest
-	leafDigests  map[int]crypto.Digest
-	f            *Forest
-	lastBlockLen uint16
+	leaves         uint32
+	dig            crypto.Digest
+	leavesComplete []bool
+	f              *Forest
+	lastBlockLen   uint16
 }
 
 // New returns a Sapling, when all the leaves have been added, it will become a
 // tree.
 func (f *Forest) New(d crypto.Digest, l uint32) *Sapling {
 	return &Sapling{
-		leaves:       l,
-		dig:          d,
-		f:            f,
-		lastBlockLen: BlockSize,
-		leafDigests:  make(map[int]crypto.Digest),
+		leaves:         l,
+		dig:            d,
+		f:              f,
+		lastBlockLen:   BlockSize,
+		leavesComplete: make([]bool, l),
 	}
 }

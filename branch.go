@@ -5,9 +5,9 @@ import (
 )
 
 const (
-	rMask = byte(1)
-	lMask = byte(2)
-	both  = rMask & lMask
+	rLeafMask = byte(1)
+	lLeafMask = byte(2)
+	both      = rLeafMask & lLeafMask
 )
 
 type branch struct {
@@ -18,8 +18,8 @@ type branch struct {
 
 func (b *branch) val() crypto.Digest { return b.dig }
 
-func (b *branch) lIsLeaf() bool { return b.pattern&lMask == lMask }
-func (b *branch) rIsLeaf() bool { return b.pattern&rMask == rMask }
+func (b *branch) lIsLeaf() bool { return b.pattern&lLeafMask == lLeafMask }
+func (b *branch) rIsLeaf() bool { return b.pattern&rLeafMask == rLeafMask }
 
 func (b *branch) marshal() []byte {
 	s := make([]byte, crypto.DigestLength*2+1)
