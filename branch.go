@@ -39,17 +39,13 @@ func unmarshalBranch(s []byte) *branch {
 		pattern: p,
 		left:    s[:crypto.DigestLength],
 		right:   s[crypto.DigestLength:],
-		dig:     crypto.SHA256(s),
+		dig:     crypto.GetDigest(s),
 	}
 }
 
 func newBranch(l, r crypto.Digest, pattern byte) *branch {
-	s := make([]byte, crypto.DigestLength*2)
-	copy(s, l)
-	copy(s[crypto.DigestLength:], r)
-
 	return &branch{
-		dig:     crypto.SHA256(s),
+		dig:     crypto.GetDigest(l, r),
 		left:    l,
 		right:   r,
 		pattern: pattern,

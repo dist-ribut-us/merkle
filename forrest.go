@@ -101,7 +101,7 @@ func (f *Forest) writeBranch(b *branch) error {
 }
 
 func (f *Forest) writeLeaf(b []byte, l int) (crypto.Digest, error) {
-	d := crypto.SHA256(b[:l])
+	d := crypto.GetDigest(b[:l])
 	cd := f.key.Seal(d, zeroNonce)[crypto.NonceLength:]
 	data := f.key.Seal(b, nil)
 

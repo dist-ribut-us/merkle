@@ -7,15 +7,15 @@ import (
 )
 
 func TestBranchMarshal(t *testing.T) {
-	d1 := crypto.SHA256([]byte("test 1"))
-	d2 := crypto.SHA256([]byte("test 2"))
+	d1 := crypto.GetDigest([]byte("test 1"))
+	d2 := crypto.GetDigest([]byte("test 2"))
 
 	s := make([]byte, crypto.DigestLength*2)
 	copy(s, d1)
 	copy(s[crypto.DigestLength:], d2)
 
 	b1 := &branch{
-		dig:     crypto.SHA256(s),
+		dig:     crypto.GetDigest(s),
 		left:    d1,
 		right:   d2,
 		pattern: both,

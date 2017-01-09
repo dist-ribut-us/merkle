@@ -18,7 +18,7 @@ type Tree struct {
 	leaves         uint32
 	f              *Forest
 	lastBlockLen   uint16
-	pos            int
+	pos            int64
 	complete       bool
 	leavesComplete []bool
 }

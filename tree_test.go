@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/dist-ribut-us/crypto"
 	"github.com/stretchr/testify/assert"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,6 +50,37 @@ func TestTree(t *testing.T) {
 			break
 		}
 		assert.Equal(t, data, dataOut)
+
+		// --- Test Len ---
+		assert.Equal(t, size, tr.Len())
+
+		// --- Test Seek ---
+		pos, err := tr.Seek(10, io.SeekStart)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(10), pos)
+		b := make([]byte, 10)
+		ln, err := tr.Read(b)
+		assert.NoError(t, err)
+		assert.Equal(t, 10, ln)
+		assert.Equal(t, data[10:20], b)
+
+		pos, err = tr.Seek(10, io.SeekCurrent)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(30), pos)
+		ln, err = tr.Read(b)
+		assert.NoError(t, err)
+		assert.Equal(t, 10, ln)
+		assert.Equal(t, data[30:40], b)
+
+		pos, err = tr.Seek(-10, io.SeekEnd)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(size-10), pos)
+		ln, err = tr.Read(b)
+		assert.NoError(t, err)
+		assert.Equal(t, 10, ln)
+		assert.Equal(t, data[size-10:], b)
+
+		tr.Seek(0, io.SeekStart)
 
 		// --- Test GetLeaf ---
 		for i := 0; i < int(tr.leaves); i++ {

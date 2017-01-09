@@ -15,7 +15,7 @@ func TestLeafFilename(t *testing.T) {
 	l := make([]byte, BlockSize)
 	_, err := rand.Read(l)
 	assert.NoError(t, err)
-	d := crypto.SHA256(l)
+	d := crypto.GetDigest(l)
 	cd := key.Seal(d, zeroNonce)[crypto.NonceLength:]
 	filename := hex.EncodeToString(cd)
 	if strings.HasPrefix(filename, "00000000000000") {
@@ -36,15 +36,11 @@ func TestForest(t *testing.T) {
 		return
 	}
 
-	d1 := crypto.SHA256([]byte("test 1"))
-	d2 := crypto.SHA256([]byte("test 2"))
-
-	s := make([]byte, crypto.DigestLength*2)
-	copy(s, d1)
-	copy(s[crypto.DigestLength:], d2)
+	d1 := crypto.GetDigest([]byte("test 1"))
+	d2 := crypto.GetDigest([]byte("test 2"))
 
 	b1 := &branch{
-		dig:     crypto.SHA256(s),
+		dig:     crypto.GetDigest(d1, d2),
 		left:    d1,
 		right:   d2,
 		pattern: both,

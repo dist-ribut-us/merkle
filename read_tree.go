@@ -6,6 +6,9 @@ import (
 	"io"
 )
 
+// ErrIncomplete is returned when trying to perform an operation limited to a
+// complete Tree (Read or ReadAll). Check if the Tree is complete with
+// Tree.Complete()
 var ErrIncomplete = errors.New("Tree is incomplete")
 
 // ReadAll reads the contents of a tree into a byte slice
@@ -15,7 +18,7 @@ func (t *Tree) ReadAll() ([]byte, error) {
 	}
 	l := int(t.leaves-1)*BlockSize + int(t.lastBlockLen)
 	b := make([]byte, l)
-	startAt := 0
+	var startAt int64
 	_, err := recursiveRead(b, &startAt, t.dig, t.leaves == 1, t.f, true, int(t.lastBlockLen))
 	return b, err
 }
@@ -24,12 +27,12 @@ func (t *Tree) ReadAll() ([]byte, error) {
 // includes all the Uncle digests and the position with in the tree.
 type ValidationChain []crypto.Digest
 
-func recursiveRead(b []byte, startAt *int, d crypto.Digest, isLeaf bool, f *Forest, rightMost bool, lastLen int) (int, error) {
+func recursiveRead(b []byte, startAt *int64, d crypto.Digest, isLeaf bool, f *Forest, rightMost bool, lastLen int) (int, error) {
 	// startAt is a bit confusing, if we're starting at position 1000, we add the
 	// data length to it, when it becomes <=0, then we start reading. The negative value is how far from the beginning to start
 	if isLeaf {
 		if rightMost {
-			*startAt -= lastLen
+			*startAt -= int64(lastLen)
 			if (*startAt) >= 0 {
 				return 0, io.EOF
 			}
@@ -43,7 +46,7 @@ func recursiveRead(b []byte, startAt *int, d crypto.Digest, isLeaf bool, f *Fore
 				lf = lf[:lastLen]
 			}
 			l = len(lf)
-			s := l + *startAt
+			s := l + int(*startAt)
 			if s < 0 {
 				s = 0
 			}
@@ -108,21 +111,18 @@ func (t *Tree) ValidateLeaf(vc ValidationChain, leaf []byte, lIdx int) bool {
 }
 
 func validateLeaf(vc ValidationChain, leaf []byte, lIdx int, d crypto.Digest, ln uint32) bool {
-	v := crypto.SHA256(leaf)
-	b := make([]byte, crypto.DigestLength*2)
+	v := crypto.GetDigest(leaf)
 	dirs := dirChain(uint32(lIdx), 0, ln)
 	if len(dirs) != len(vc) {
 		return false
 	}
 	for i, vd := range vc {
 		if dirs[i] {
-			copy(b, v)
-			copy(b[crypto.DigestLength:], vd)
+			v = crypto.GetDigest(v, vd)
 		} else {
-			copy(b, vd)
-			copy(b[crypto.DigestLength:], v)
+			v = crypto.GetDigest(vd, v)
 		}
-		v = crypto.SHA256(b)
+
 	}
 
 	return v.Equal(d)
@@ -150,6 +150,36 @@ func (t *Tree) Read(p []byte) (int, error) {
 	}
 	startAt := t.pos
 	n, err := recursiveRead(p, &startAt, t.dig, t.leaves == 1, t.f, true, int(t.lastBlockLen))
-	t.pos += n
+	t.pos += int64(n)
 	return n, err
+}
+
+// ErrBadWhence is returned if the whence value given to Seek is unknown
+var ErrBadWhence = errors.New("Bad whence value")
+
+var ErrNegativeOffset = errors.New("Attempting to Seek to negative offset")
+
+// Seek implements io.Seeker
+func (t *Tree) Seek(offset int64, whence int) (int64, error) {
+	var newPos int64
+	switch whence {
+	case io.SeekStart:
+		newPos = offset
+	case io.SeekCurrent:
+		newPos = t.pos + offset
+	case io.SeekEnd:
+		newPos = int64(t.Len()) + offset
+	default:
+		return t.pos, ErrBadWhence
+	}
+	if newPos < 0 {
+		return t.pos, ErrNegativeOffset
+	}
+	t.pos = newPos
+	return t.pos, nil
+}
+
+// Len returns the byte size of the tree
+func (t *Tree) Len() int {
+	return (int(t.leaves-1)*BlockSize + int(t.lastBlockLen))
 }

@@ -114,10 +114,7 @@ func (t *Tree) AddLeaf(vc ValidationChain, leaf []byte, lIdx int) {
 }
 
 func getOrCreateBranch(l, r crypto.Digest, p byte, f *Forest) *branch {
-	b := make([]byte, crypto.DigestLength*2)
-	copy(b, l)
-	copy(b[crypto.DigestLength:], r)
-	d := crypto.SHA256(b)
+	d := crypto.GetDigest(l, r)
 	br := f.readBranch(d)
 	if br == nil {
 		br = &branch{
