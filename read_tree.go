@@ -157,6 +157,8 @@ func (t *Tree) Read(p []byte) (int, error) {
 // ErrBadWhence is returned if the whence value given to Seek is unknown
 var ErrBadWhence = errors.New("Bad whence value")
 
+// ErrNegativeOffset is returned if the result of a seek would set the tree
+// offset position to a negative value.
 var ErrNegativeOffset = errors.New("Attempting to Seek to negative offset")
 
 // Seek implements io.Seeker
