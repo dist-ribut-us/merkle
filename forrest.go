@@ -1,11 +1,13 @@
 package merkle
 
 import (
+	"bytes"
 	"encoding/hex"
 	"github.com/boltdb/bolt"
 	"github.com/dist-ribut-us/crypto"
 	"github.com/dist-ribut-us/serial"
 	"os"
+	"time"
 )
 
 // Forest is a directory used to store Merkle Trees. A Forest has a symmetric
@@ -13,60 +15,66 @@ import (
 // to store structural information (branches and roots).
 type Forest struct {
 	key *crypto.Shared
-	dir *os.File
+	dir string
 	db  *bolt.DB
 }
 
 var branchBkt = []byte("b")
 var treeBkt = []byte("t")
-var valBkt = []byte("v")
+var validateKey = []byte("__key__")
 
-// New creates a new Forest
-func New(dirStr string, key *crypto.Shared) (*Forest, error) {
-	var err error
-	var f *Forest
-	if err = os.MkdirAll(dirStr, 0777); err == nil {
-		if dir, err := os.Open(dirStr); err == nil {
-			if db, err := bolt.Open(dir.Name()+"/merkle.db", 0777, nil); err == nil {
-				db.Update(func(tx *bolt.Tx) error {
-					tx.CreateBucketIfNotExists(branchBkt)
-					tx.CreateBucketIfNotExists(treeBkt)
-					tx.CreateBucketIfNotExists(valBkt)
-					return nil
-				})
-				f = &Forest{
-					key: key,
-					db:  db,
-					dir: dir,
-				}
-			}
-		}
-	}
-	return f, err
+var openOptions = &bolt.Options{
+	Timeout: time.Second,
 }
 
-// Open will open an existing Forest
+// Open will either open or creates a new Forest
 func Open(dirStr string, key *crypto.Shared) (*Forest, error) {
-	var err error
-	var f *Forest
-	var dir *os.File
-	if dir, err = os.Open(dirStr); err == nil {
-		var db *bolt.DB
-		if db, err = bolt.Open(dir.Name()+"/merkle.db", 0777, nil); err == nil {
-			f = &Forest{
-				key: key,
-				db:  db,
-				dir: dir,
+	if err := os.MkdirAll(dirStr, 0777); err != nil {
+		return nil, err
+	}
+	dir, err := os.Open(dirStr)
+	if err != nil {
+		return nil, err
+	}
+	db, err := bolt.Open(dir.Name()+"/merkle.db", 0777, openOptions)
+	if err != nil {
+		return nil, err
+	}
+	err = db.Update(func(tx *bolt.Tx) error {
+		tx.CreateBucketIfNotExists(branchBkt)
+		b, _ := tx.CreateBucketIfNotExists(treeBkt)
+		// the key validation is stored in the treeBkt because it is unlikely
+		// to collied with a tree
+		v := b.Get(validateKey)
+		if v == nil {
+			b.Put(validateKey, key.Seal(validateKey, nil))
+		} else {
+			if v, err = key.Open(v); err != nil {
+				return err
+			} else if !bytes.Equal(v, validateKey) {
+				return crypto.ErrDecryptionFailed
 			}
 		}
+		return nil
+	})
+	if err != nil {
+		db.Close()
+		return nil, err
 	}
+	f := &Forest{
+		key: key,
+		db:  db,
+		dir: dir.Name(),
+	}
+
+	err = dir.Close()
+
 	return f, err
 }
 
 // Close will close a Forest, specifically, it will close the Bolt DB and
 // directory.
 func (f *Forest) Close() {
-	f.dir.Close()
 	f.db.Close()
 }
 
@@ -108,7 +116,7 @@ func (f *Forest) writeLeaf(b []byte, l int) (crypto.Digest, error) {
 	filename := hex.EncodeToString(cd)
 	var file *os.File
 	var err error
-	if file, err = os.Create(f.dir.Name() + "/" + filename); err == nil {
+	if file, err = os.Create(f.dir + "/" + filename); err == nil {
 		_, err = file.Write(data)
 		file.Close()
 	}
@@ -118,21 +126,22 @@ func (f *Forest) writeLeaf(b []byte, l int) (crypto.Digest, error) {
 func (f *Forest) readLeaf(d crypto.Digest) ([]byte, error) {
 	cd := f.key.Seal(d, zeroNonce)[crypto.NonceLength:]
 	filename := hex.EncodeToString(cd)
-	var file *os.File
-	var err error
 	var b []byte
 	buf := make([]byte, 1000)
-	if file, err = os.Open(f.dir.Name() + "/" + filename); err == nil {
-		var l int
-		for l, err = file.Read(buf); err == nil; l, err = file.Read(buf) {
-			b = append(b, buf[:l]...)
-		}
-		if err.Error() == "EOF" {
-			err = nil
-		}
-		b, err = f.key.Open(b)
-		file.Close()
+	file, err := os.Open(f.dir + "/" + filename)
+	if err != nil {
+		return nil, err
 	}
+	var l int
+	for l, err = file.Read(buf); err == nil; l, err = file.Read(buf) {
+		b = append(b, buf[:l]...)
+	}
+	if err.Error() == "EOF" {
+		err = nil
+	}
+	b, err = f.key.Open(b)
+	err = file.Close()
+
 	return b, err
 }
 
@@ -192,24 +201,74 @@ func (f *Forest) GetTree(d crypto.Digest) *Tree {
 // SetValue saves a single value to the Bolt Database. It does not use the
 // Merkle tree structure, but provides a simple method to store secure
 // information in the same container as the trees
-func (f *Forest) SetValue(key, value []byte) error {
+func (f *Forest) SetValue(bucket, key, value []byte) error {
 	key = f.key.Seal(key, zeroNonce)[crypto.NonceLength:]
 	value = f.key.Seal(value, nil)
 	return f.db.Update(func(tx *bolt.Tx) error {
-		return tx.Bucket(valBkt).Put(key, value)
+		btk, err := tx.CreateBucketIfNotExists(bucket)
+		if err != nil {
+			return err
+		}
+		return btk.Put(key, value)
 	})
 }
 
 // GetValue returns a single value from the Bolt Database stored with SetValue.
 // It does not use the Merkle tree structure, but provides a simple method to
 // store secure information in the same container as the trees
-func (f *Forest) GetValue(key []byte) []byte {
+func (f *Forest) GetValue(bucket, key []byte) ([]byte, error) {
 	key = f.key.Seal(key, zeroNonce)[crypto.NonceLength:]
 	var c []byte
 	f.db.View(func(tx *bolt.Tx) error {
-		c = tx.Bucket(valBkt).Get(key)
+		c = tx.Bucket(bucket).Get(key)
 		return nil
 	})
-	value, _ := f.key.Open(c)
-	return value
+	return f.key.Open(c)
+}
+
+// First returns the first key/value pair in the bucket
+func (f *Forest) First(bucket []byte) ([]byte, []byte, error) {
+	var (
+		key []byte
+		val []byte
+	)
+	f.db.View(func(tx *bolt.Tx) error {
+		bkt := tx.Bucket(bucket)
+		key, val = bkt.Cursor().First()
+		return nil
+	})
+	key, err := f.key.NonceOpen(key, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	val, err = f.key.Open(val)
+	if err != nil {
+		return nil, nil, err
+	}
+	return key, val, nil
+}
+
+// First returns the first key/value pair in the bucket
+func (f *Forest) Next(bucket, searchKey []byte) ([]byte, []byte, error) {
+	searchKey = f.key.Seal(searchKey, zeroNonce)[crypto.NonceLength:]
+	var (
+		key []byte
+		val []byte
+	)
+	f.db.View(func(tx *bolt.Tx) error {
+		bkt := tx.Bucket(bucket)
+		c := bkt.Cursor()
+		c.Seek(searchKey)
+		key, val = c.Next()
+		return nil
+	})
+	key, err := f.key.NonceOpen(key, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	val, err = f.key.Open(val)
+	if err != nil {
+		return nil, nil, err
+	}
+	return key, val, nil
 }

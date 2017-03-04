@@ -1,6 +1,7 @@
 package merkle
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"github.com/dist-ribut-us/crypto"
@@ -26,12 +27,13 @@ func TestLeafFilename(t *testing.T) {
 
 func TestForest(t *testing.T) {
 	dirStr := "TestForest"
+	os.RemoveAll(dirStr)
 	key, err := crypto.RandomShared()
 	if !assert.NoError(t, err) {
 		return
 	}
 
-	f, err := New(dirStr, key)
+	f, err := Open(dirStr, key)
 	if !assert.NoError(t, err) {
 		return
 	}
@@ -48,6 +50,13 @@ func TestForest(t *testing.T) {
 
 	f.writeBranch(b1)
 	f.Close()
+
+	// test bad key
+	badkey, err := crypto.RandomShared()
+	assert.NoError(t, err)
+	f, err = Open(dirStr, badkey)
+	assert.Equal(t, crypto.ErrDecryptionFailed, err)
+	assert.Nil(t, f)
 
 	f, err = Open(dirStr, key)
 	if !assert.NoError(t, err) {
@@ -89,7 +98,7 @@ func TestValue(t *testing.T) {
 		return
 	}
 
-	f, err := New(dirStr, key)
+	f, err := Open(dirStr, key)
 	if !assert.NoError(t, err) {
 		return
 	}
@@ -102,9 +111,45 @@ func TestValue(t *testing.T) {
 	_, err = rand.Read(v)
 	assert.NoError(t, err)
 
-	f.SetValue(k, v)
-	out := f.GetValue(k)
+	bkt := []byte("valueTestBucket")
+	f.SetValue(bkt, k, v)
+	out, err := f.GetValue(bkt, k)
+	assert.NoError(t, err)
 	assert.Equal(t, v, out)
+
+	k2 := make([]byte, 20)
+	v2 := make([]byte, 200)
+	_, err = rand.Read(k2)
+	assert.NoError(t, err)
+	_, err = rand.Read(v2)
+	assert.NoError(t, err)
+	f.SetValue(bkt, k2, v2)
+
+	var otherk []byte
+	var otherv []byte
+	fk, fv, err := f.First(bkt)
+	assert.NoError(t, err)
+	if bytes.Equal(fk, k) {
+		assert.Equal(t, fv, v)
+		otherk = k2
+		otherv = v2
+	} else if bytes.Equal(fk, k2) {
+		assert.Equal(t, fv, v2)
+		otherk = k
+		otherv = v
+	} else {
+		t.Error("First key did not match any key")
+	}
+
+	sk, sv, err := f.Next(bkt, fk)
+	assert.NoError(t, err)
+	assert.Equal(t, otherk, sk)
+	assert.Equal(t, otherv, sv)
+
+	tk, tv, err := f.Next(bkt, sk)
+	assert.NoError(t, err)
+	assert.Nil(t, tk)
+	assert.Nil(t, tv)
 
 	f.Close()
 	assert.NoError(t, os.RemoveAll(dirStr))

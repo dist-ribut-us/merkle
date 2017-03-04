@@ -17,7 +17,11 @@ prove that the leaf belongs to the tree.
 [![GoDoc](https://godoc.org/github.com/dist-ribut-us/merkle?status.svg)](https://godoc.org/github.com/dist-ribut-us/merkle)
 
 ### To-do
+* Delete test data: if a test fails, the next round of tests will fail because
+  they are reading the old database.
+
 Someday
+* pass a slice into readleaf, that could be way more efficient
 * get many blocks and uncles
 * timestamp on tree
   * ttl : erase tree after a certain point
@@ -30,3 +34,9 @@ efficient storage.
 
 #### Partial Trees
 Read and ReadAll will simply not work on an incomplete tree.
+
+#### Directed Encrypted Access
+Just the fragment of a thought, but a Forrest could be stored remotely (and
+distributed). Or at least any generic blob storage could be used to store
+leaves. A user could securely store data on an untrusted location and leak very
+little meta data.
