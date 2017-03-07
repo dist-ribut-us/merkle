@@ -23,6 +23,11 @@ two other nodes. A leaf holds a block of data.
 The tree needs to be lazy, it doesn't help to read the whole thing in and we
 need to write to it from a Reader.
 
+### Todo
+
+I think AddLeaf needs work. Do we need lIdx? Also, is the validation chain
+actually being validated?
+
 ### Later
 
 #### TTL

@@ -1,15 +1,21 @@
 package merkle
 
 import (
-	"errors"
 	"github.com/dist-ribut-us/crypto"
 	"io"
 )
 
+// this allows errors to be defined as const instead of var
+type defineErr string
+
+func (d defineErr) Error() string {
+	return string(d)
+}
+
 // ErrIncomplete is returned when trying to perform an operation limited to a
 // complete Tree (Read or ReadAll). Check if the Tree is complete with
 // Tree.Complete()
-var ErrIncomplete = errors.New("Tree is incomplete")
+const ErrIncomplete = defineErr("Tree is incomplete")
 
 // ReadAll reads the contents of a tree into a byte slice
 func (t *Tree) ReadAll() ([]byte, error) {
@@ -155,11 +161,11 @@ func (t *Tree) Read(p []byte) (int, error) {
 }
 
 // ErrBadWhence is returned if the whence value given to Seek is unknown
-var ErrBadWhence = errors.New("Bad whence value")
+const ErrBadWhence = defineErr("Bad whence value")
 
 // ErrNegativeOffset is returned if the result of a seek would set the tree
 // offset position to a negative value.
-var ErrNegativeOffset = errors.New("Attempting to Seek to negative offset")
+const ErrNegativeOffset = defineErr("Attempting to Seek to negative offset")
 
 // Seek implements io.Seeker
 func (t *Tree) Seek(offset int64, whence int) (int64, error) {

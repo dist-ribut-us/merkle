@@ -23,6 +23,10 @@ var branchBkt = []byte("b")
 var treeBkt = []byte("t")
 var validateKey = []byte("__key__")
 
+// ErrBucketDoesNotExist is returned when trying to read from a bucket that does
+// not exist.
+const ErrBucketDoesNotExist = defineErr("Bucket does not exist")
+
 var openOptions = &bolt.Options{
 	Timeout: time.Second,
 }
@@ -219,10 +223,17 @@ func (f *Forest) SetValue(bucket, key, value []byte) error {
 func (f *Forest) GetValue(bucket, key []byte) ([]byte, error) {
 	key = f.key.Seal(key, zeroNonce)[crypto.NonceLength:]
 	var c []byte
-	f.db.View(func(tx *bolt.Tx) error {
-		c = tx.Bucket(bucket).Get(key)
+	err := f.db.View(func(tx *bolt.Tx) error {
+		bkt := tx.Bucket(bucket)
+		if bkt == nil {
+			return ErrBucketDoesNotExist
+		}
+		c = bkt.Get(key)
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 	return f.key.Open(c)
 }
 
@@ -234,6 +245,9 @@ func (f *Forest) First(bucket []byte) ([]byte, []byte, error) {
 	)
 	f.db.View(func(tx *bolt.Tx) error {
 		bkt := tx.Bucket(bucket)
+		if bkt == nil {
+			return ErrBucketDoesNotExist
+		}
 		key, val = bkt.Cursor().First()
 		return nil
 	})
@@ -257,6 +271,9 @@ func (f *Forest) Next(bucket, searchKey []byte) ([]byte, []byte, error) {
 	)
 	f.db.View(func(tx *bolt.Tx) error {
 		bkt := tx.Bucket(bucket)
+		if bkt == nil {
+			return ErrBucketDoesNotExist
+		}
 		c := bkt.Cursor()
 		c.Seek(searchKey)
 		key, val = c.Next()
