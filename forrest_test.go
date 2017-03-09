@@ -12,7 +12,7 @@ import (
 )
 
 func TestLeafFilename(t *testing.T) {
-	key, _ := crypto.RandomShared()
+	key := crypto.RandomShared()
 	l := make([]byte, BlockSize)
 	_, err := rand.Read(l)
 	assert.NoError(t, err)
@@ -28,10 +28,7 @@ func TestLeafFilename(t *testing.T) {
 func TestForest(t *testing.T) {
 	dirStr := "TestForest"
 	os.RemoveAll(dirStr)
-	key, err := crypto.RandomShared()
-	if !assert.NoError(t, err) {
-		return
-	}
+	key := crypto.RandomShared()
 
 	f, err := Open(dirStr, key)
 	if !assert.NoError(t, err) {
@@ -52,8 +49,7 @@ func TestForest(t *testing.T) {
 	f.Close()
 
 	// test bad key
-	badkey, err := crypto.RandomShared()
-	assert.NoError(t, err)
+	badkey := crypto.RandomShared()
 	f, err = Open(dirStr, badkey)
 	assert.Equal(t, crypto.ErrDecryptionFailed, err)
 	assert.Nil(t, f)
@@ -93,10 +89,7 @@ func TestForest(t *testing.T) {
 
 func TestValue(t *testing.T) {
 	dirStr := "TestValue"
-	key, err := crypto.RandomShared()
-	if !assert.NoError(t, err) {
-		return
-	}
+	key := crypto.RandomShared()
 
 	f, err := Open(dirStr, key)
 	if !assert.NoError(t, err) {

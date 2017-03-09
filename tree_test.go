@@ -15,10 +15,7 @@ import (
 
 func TestTree(t *testing.T) {
 	dirStr := "treeTest"
-	key, err := crypto.RandomShared()
-	if !assert.NoError(t, err) {
-		return
-	}
+	key := crypto.RandomShared()
 
 	f, err := Open(dirStr, key)
 	if !assert.NoError(t, err) {
@@ -142,20 +139,14 @@ func TestSapling(t *testing.T) {
 	fromDir := "fromDir"
 	toDir := "toDir"
 
-	fromKey, err := crypto.RandomShared()
-	if !assert.NoError(t, err) {
-		return
-	}
+	fromKey := crypto.RandomShared()
 
 	fFrom, err := Open(fromDir, fromKey)
 	if !assert.NoError(t, err) {
 		return
 	}
 
-	toKey, err := crypto.RandomShared()
-	if !assert.NoError(t, err) {
-		return
-	}
+	toKey := crypto.RandomShared()
 
 	fTo, err := Open(toDir, toKey)
 	if !assert.NoError(t, err) {
