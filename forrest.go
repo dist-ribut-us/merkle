@@ -84,8 +84,8 @@ func (f *Forest) Close() {
 
 var zeroNonce = &crypto.Nonce{}
 
-func (f *Forest) readBranch(d crypto.Digest) *branch {
-	cd := f.key.Seal(d, zeroNonce)[crypto.NonceLength:]
+func (f *Forest) readBranch(d *crypto.Digest) *branch {
+	cd := f.key.Seal(d.Slice(), zeroNonce)[crypto.NonceLength:]
 	var s []byte
 	f.db.View(func(tx *bolt.Tx) error {
 		s = tx.Bucket(branchBkt).Get(cd)
@@ -106,15 +106,15 @@ func (f *Forest) readBranch(d crypto.Digest) *branch {
 
 func (f *Forest) writeBranch(b *branch) error {
 	s := f.key.Seal(b.marshal(), nil)
-	cd := f.key.Seal(b.dig, zeroNonce)[crypto.NonceLength:]
+	cd := f.key.Seal(b.dig.Slice(), zeroNonce)[crypto.NonceLength:]
 	return f.db.Update(func(tx *bolt.Tx) error {
 		return tx.Bucket(branchBkt).Put(cd, s)
 	})
 }
 
-func (f *Forest) writeLeaf(b []byte, l int) (crypto.Digest, error) {
+func (f *Forest) writeLeaf(b []byte, l int) (*crypto.Digest, error) {
 	d := crypto.GetDigest(b[:l])
-	cd := f.key.Seal(d, zeroNonce)[crypto.NonceLength:]
+	cd := f.key.Seal(d.Slice(), zeroNonce)[crypto.NonceLength:]
 	data := f.key.Seal(b, nil)
 
 	filename := hex.EncodeToString(cd)
@@ -127,8 +127,8 @@ func (f *Forest) writeLeaf(b []byte, l int) (crypto.Digest, error) {
 	return d, err
 }
 
-func (f *Forest) readLeaf(d crypto.Digest) ([]byte, error) {
-	cd := f.key.Seal(d, zeroNonce)[crypto.NonceLength:]
+func (f *Forest) readLeaf(d *crypto.Digest) ([]byte, error) {
+	cd := f.key.Seal(d.Slice(), zeroNonce)[crypto.NonceLength:]
 	filename := hex.EncodeToString(cd)
 	var b []byte
 	buf := make([]byte, 1000)
@@ -150,7 +150,7 @@ func (f *Forest) readLeaf(d crypto.Digest) ([]byte, error) {
 }
 
 func (f *Forest) writeTree(t *Tree) {
-	key := f.key.Seal(t.dig, zeroNonce)[crypto.NonceLength:]
+	key := f.key.Seal(t.dig.Slice(), zeroNonce)[crypto.NonceLength:]
 	l := 7
 	if !t.complete {
 		l += 4 + (int(t.leaves) / 8)
@@ -174,8 +174,8 @@ func (f *Forest) writeTree(t *Tree) {
 
 // GetTree will return a Tree from a Forest. It is only a reference to the
 // Tree, not the data in the tree. If the tree is not found, it will return nil.
-func (f *Forest) GetTree(d crypto.Digest) *Tree {
-	key := f.key.Seal(d, zeroNonce)[crypto.NonceLength:]
+func (f *Forest) GetTree(d *crypto.Digest) *Tree {
+	key := f.key.Seal(d.Slice(), zeroNonce)[crypto.NonceLength:]
 	var b []byte
 	f.db.View(func(tx *bolt.Tx) error {
 		b = tx.Bucket(treeBkt).Get(key)
@@ -262,24 +262,30 @@ func (f *Forest) First(bucket []byte) ([]byte, []byte, error) {
 	return key, val, nil
 }
 
-// First returns the first key/value pair in the bucket
+// Next takes a searchKey and returns the next key/value after it
 func (f *Forest) Next(bucket, searchKey []byte) ([]byte, []byte, error) {
 	searchKey = f.key.Seal(searchKey, zeroNonce)[crypto.NonceLength:]
 	var (
 		key []byte
 		val []byte
 	)
-	f.db.View(func(tx *bolt.Tx) error {
+	err := f.db.View(func(tx *bolt.Tx) error {
 		bkt := tx.Bucket(bucket)
 		if bkt == nil {
 			return ErrBucketDoesNotExist
 		}
 		c := bkt.Cursor()
-		c.Seek(searchKey)
+		key, val = c.Seek(searchKey)
+		if !bytes.Equal(key, searchKey) {
+			return nil
+		}
 		key, val = c.Next()
 		return nil
 	})
-	key, err := f.key.NonceOpen(key, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	key, err = f.key.NonceOpen(key, nil)
 	if err != nil {
 		return nil, nil, err
 	}

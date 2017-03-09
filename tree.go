@@ -14,7 +14,7 @@ const BlockSize = 8112
 // Tree is how a resource is stored. It represents the top level digest of a
 // Merkle tree.
 type Tree struct {
-	dig            crypto.Digest
+	dig            *crypto.Digest
 	leaves         uint32
 	f              *Forest
 	lastBlockLen   uint16
@@ -25,13 +25,13 @@ type Tree struct {
 
 // Digest gives the Digest that identifies the tree. This can be used to request
 // the tree from a forest.
-func (t *Tree) Digest() crypto.Digest { return t.dig }
+func (t *Tree) Digest() *crypto.Digest { return t.dig }
 
 // Complete returns true if the tree has all it's leaves.
 func (t *Tree) Complete() bool { return t.complete }
 
 // New returns a new Tree
-func (f *Forest) New(d crypto.Digest, l uint32) *Tree {
+func (f *Forest) New(d *crypto.Digest, l uint32) *Tree {
 	t := &Tree{
 		leaves:         l,
 		dig:            d,

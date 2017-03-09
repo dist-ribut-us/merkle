@@ -11,12 +11,12 @@ const (
 )
 
 type branch struct {
-	dig         crypto.Digest
-	left, right crypto.Digest
+	dig         *crypto.Digest
+	left, right *crypto.Digest
 	pattern     byte
 }
 
-func (b *branch) val() crypto.Digest { return b.dig }
+func (b *branch) val() *crypto.Digest { return b.dig }
 
 func (b *branch) lIsLeaf() bool { return b.pattern&lLeafMask == lLeafMask }
 func (b *branch) rIsLeaf() bool { return b.pattern&rLeafMask == rLeafMask }
@@ -24,8 +24,8 @@ func (b *branch) rIsLeaf() bool { return b.pattern&rLeafMask == rLeafMask }
 func (b *branch) marshal() []byte {
 	s := make([]byte, crypto.DigestLength*2+1)
 	s[0] = b.pattern
-	copy(s[1:], b.left)
-	copy(s[crypto.DigestLength+1:], b.right)
+	copy(s[1:], b.left[:])
+	copy(s[crypto.DigestLength+1:], b.right[:])
 	return s
 }
 
@@ -37,15 +37,15 @@ func unmarshalBranch(s []byte) *branch {
 	s = s[1:]
 	return &branch{
 		pattern: p,
-		left:    s[:crypto.DigestLength],
-		right:   s[crypto.DigestLength:],
+		left:    crypto.DigestFromSlice(s[:crypto.DigestLength]),
+		right:   crypto.DigestFromSlice(s[crypto.DigestLength:]),
 		dig:     crypto.GetDigest(s),
 	}
 }
 
-func newBranch(l, r crypto.Digest, pattern byte) *branch {
+func newBranch(l, r *crypto.Digest, pattern byte) *branch {
 	return &branch{
-		dig:     crypto.GetDigest(l, r),
+		dig:     crypto.GetDigest(l.Slice(), r.Slice()),
 		left:    l,
 		right:   r,
 		pattern: pattern,

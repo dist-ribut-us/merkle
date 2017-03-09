@@ -11,8 +11,8 @@ func TestBranchMarshal(t *testing.T) {
 	d2 := crypto.GetDigest([]byte("test 2"))
 
 	s := make([]byte, crypto.DigestLength*2)
-	copy(s, d1)
-	copy(s[crypto.DigestLength:], d2)
+	copy(s, d1.Slice())
+	copy(s[crypto.DigestLength:], d2.Slice())
 
 	b1 := &branch{
 		dig:     crypto.GetDigest(s),

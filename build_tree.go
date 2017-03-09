@@ -10,7 +10,7 @@ import (
 func (f *Forest) BuildTree(r io.Reader) (*Tree, error) {
 	buf := make([]byte, BlockSize)
 	var err error
-	var ls []crypto.Digest
+	var ls []*crypto.Digest
 	var lbl uint16
 	for err == nil {
 		cur, l := 0, 0
@@ -39,7 +39,7 @@ func (f *Forest) BuildTree(r io.Reader) (*Tree, error) {
 	return t, err
 }
 
-func recursiveBuild(f *Forest, leaves []crypto.Digest) (crypto.Digest, bool) {
+func recursiveBuild(f *Forest, leaves []*crypto.Digest) (*crypto.Digest, bool) {
 	l := len(leaves)
 	if l == 1 {
 		return leaves[0], true
@@ -114,8 +114,8 @@ func (t *Tree) AddLeaf(vc ValidationChain, leaf []byte, lIdx int) {
 	t.f.writeTree(t)
 }
 
-func getOrCreateBranch(l, r crypto.Digest, p byte, f *Forest) *branch {
-	d := crypto.GetDigest(l, r)
+func getOrCreateBranch(l, r *crypto.Digest, p byte, f *Forest) *branch {
+	d := crypto.GetDigest(l.Slice(), r.Slice())
 	br := f.readBranch(d)
 	if br == nil {
 		br = &branch{

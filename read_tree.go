@@ -31,9 +31,9 @@ func (t *Tree) ReadAll() ([]byte, error) {
 
 // ValidationChain is used to validate that a leaf belongs to a tree. It
 // includes all the Uncle digests and the position with in the tree.
-type ValidationChain []crypto.Digest
+type ValidationChain []*crypto.Digest
 
-func recursiveRead(b []byte, startAt *int64, d crypto.Digest, isLeaf bool, f *Forest, rightMost bool, lastLen int) (int, error) {
+func recursiveRead(b []byte, startAt *int64, d *crypto.Digest, isLeaf bool, f *Forest, rightMost bool, lastLen int) (int, error) {
 	// startAt is a bit confusing, if we're starting at position 1000, we add the
 	// data length to it, when it becomes <=0, then we start reading. The negative value is how far from the beginning to start
 	if isLeaf {
@@ -88,14 +88,14 @@ func (t *Tree) GetLeaf(lIdx int) (ValidationChain, []byte, error) {
 	return vc, l, err
 }
 
-func recursiveGetLeaf(lIdx, start, end uint32, d crypto.Digest, isLeaf bool, f *Forest) ([]crypto.Digest, []byte, error) {
+func recursiveGetLeaf(lIdx, start, end uint32, d *crypto.Digest, isLeaf bool, f *Forest) ([]*crypto.Digest, []byte, error) {
 	if isLeaf {
 		l, err := f.readLeaf(d)
 		return nil, l, err
 	}
 	b := f.readBranch(d)
 	mid := (start + end) / 2
-	var ud crypto.Digest
+	var ud *crypto.Digest
 	if lIdx < mid || lIdx == start {
 		end = mid
 		d = b.left
@@ -116,7 +116,7 @@ func (t *Tree) ValidateLeaf(vc ValidationChain, leaf []byte, lIdx int) bool {
 	return validateLeaf(vc, leaf, lIdx, t.dig, t.leaves)
 }
 
-func validateLeaf(vc ValidationChain, leaf []byte, lIdx int, d crypto.Digest, ln uint32) bool {
+func validateLeaf(vc ValidationChain, leaf []byte, lIdx int, d *crypto.Digest, ln uint32) bool {
 	v := crypto.GetDigest(leaf)
 	dirs := dirChain(uint32(lIdx), 0, ln)
 	if len(dirs) != len(vc) {
@@ -124,9 +124,9 @@ func validateLeaf(vc ValidationChain, leaf []byte, lIdx int, d crypto.Digest, ln
 	}
 	for i, vd := range vc {
 		if dirs[i] {
-			v = crypto.GetDigest(v, vd)
+			v = crypto.GetDigest(v.Slice(), vd.Slice())
 		} else {
-			v = crypto.GetDigest(vd, v)
+			v = crypto.GetDigest(vd.Slice(), v.Slice())
 		}
 
 	}
