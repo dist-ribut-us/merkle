@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"github.com/boltdb/bolt"
 	"github.com/dist-ribut-us/crypto"
+	"github.com/dist-ribut-us/errors"
 	"github.com/dist-ribut-us/serial"
 	"os"
 	"time"
@@ -25,7 +26,7 @@ var validateKey = []byte("__key__")
 
 // ErrBucketDoesNotExist is returned when trying to read from a bucket that does
 // not exist.
-const ErrBucketDoesNotExist = defineErr("Bucket does not exist")
+const ErrBucketDoesNotExist = errors.String("Bucket does not exist")
 
 var openOptions = &bolt.Options{
 	Timeout: time.Second,
