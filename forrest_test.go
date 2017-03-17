@@ -25,8 +25,8 @@ func TestLeafFilename(t *testing.T) {
 	}
 }
 
-func TestForest(t *testing.T) {
-	dirStr := "TestForest"
+func TestForrest(t *testing.T) {
+	dirStr := "TestForrest"
 	os.RemoveAll(dirStr)
 	key := crypto.RandomShared()
 
@@ -59,7 +59,7 @@ func TestForest(t *testing.T) {
 		return
 	}
 
-	leaf := make([]byte, 1000)
+	leaf := make([]byte, BlockSize)
 	_, err = rand.Read(leaf)
 	if !assert.NoError(t, err) {
 		return
@@ -89,6 +89,7 @@ func TestForest(t *testing.T) {
 
 func TestValue(t *testing.T) {
 	dirStr := "TestValue"
+	os.RemoveAll(dirStr)
 	key := crypto.RandomShared()
 
 	f, err := Open(dirStr, key)

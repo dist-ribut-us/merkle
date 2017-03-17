@@ -3,12 +3,19 @@ package merkle
 import (
 	"github.com/dist-ribut-us/crypto"
 	"io"
+	"sync"
 )
+
+var blockPool = &sync.Pool{
+	New: func() interface{} {
+		return make([]byte, BlockSize)
+	},
+}
 
 // BuildTree takes a reader and saves the data read from it to a Merkle tree in
 // the Forest.
 func (f *Forest) BuildTree(r io.Reader) (*Tree, error) {
-	buf := make([]byte, BlockSize)
+	buf := blockPool.Get().([]byte)
 	var err error
 	var ls []*crypto.Digest
 	var lbl uint16
@@ -22,6 +29,7 @@ func (f *Forest) BuildTree(r io.Reader) (*Tree, error) {
 		lbl = uint16(cur)
 		ls = append(ls, d)
 	}
+	blockPool.Put(buf)
 	if err.Error() == "EOF" {
 		err = nil
 	} else {

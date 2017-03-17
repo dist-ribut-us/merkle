@@ -128,23 +128,31 @@ func (f *Forest) writeLeaf(b []byte, l int) (*crypto.Digest, error) {
 	return d, err
 }
 
+const overhead = crypto.Overhead + crypto.NonceLength
+
 func (f *Forest) readLeaf(d *crypto.Digest) ([]byte, error) {
 	cd := f.key.Seal(d.Slice(), zeroNonce)[crypto.NonceLength:]
 	filename := hex.EncodeToString(cd)
-	var b []byte
-	buf := make([]byte, 1000)
+	// Not sure why, but if the block is exactly the right size it freezes during
+	// read, so we tack one extra byte on, then remove it.
+	b := make([]byte, BlockSize+overhead+1)
 	file, err := os.Open(f.dir + "/" + filename)
 	if err != nil {
 		return nil, err
 	}
-	var l int
-	for l, err = file.Read(buf); err == nil; l, err = file.Read(buf) {
-		b = append(b, buf[:l]...)
+	var l, i int
+	for l, err = file.Read(b); err == nil; l, err = file.Read(b[i:]) {
+		i += l
 	}
 	if err.Error() == "EOF" {
 		err = nil
 	}
+	b = b[:i+l] // remove extra byte
+
 	b, err = f.key.Open(b)
+	if err != nil {
+		return nil, err
+	}
 	err = file.Close()
 
 	return b, err

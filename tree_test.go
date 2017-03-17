@@ -15,6 +15,7 @@ import (
 
 func TestTree(t *testing.T) {
 	dirStr := "treeTest"
+	os.RemoveAll(dirStr)
 	key := crypto.RandomShared()
 
 	f, err := Open(dirStr, key)
@@ -137,7 +138,9 @@ func TestTree(t *testing.T) {
 
 func TestSapling(t *testing.T) {
 	fromDir := "fromDir"
+	os.RemoveAll(fromDir)
 	toDir := "toDir"
+	os.RemoveAll(toDir)
 
 	fromKey := crypto.RandomShared()
 
