@@ -15,7 +15,7 @@ import (
 // encryption key that is used to secure the data. It also has a Bolt DB file
 // to store structural information (branches and roots).
 type Forest struct {
-	key *crypto.Shared
+	key *crypto.Symmetric
 	dir string
 	db  *bolt.DB
 }
@@ -33,7 +33,7 @@ var openOptions = &bolt.Options{
 }
 
 // Open will either open or creates a new Forest
-func Open(dirStr string, key *crypto.Shared) (*Forest, error) {
+func Open(dirStr string, key *crypto.Symmetric) (*Forest, error) {
 	if err := os.MkdirAll(dirStr, 0777); err != nil {
 		return nil, err
 	}
