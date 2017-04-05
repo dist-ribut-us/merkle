@@ -304,3 +304,17 @@ func (f *Forest) Next(bucket, searchKey []byte) ([]byte, []byte, error) {
 	}
 	return key, val, nil
 }
+
+// MakeBuckets takes a list of buckets and calls CreateBucketIfNotExists on each
+// of them.
+func (f *Forest) MakeBuckets(bkts ...[]byte) error {
+	return f.db.Update(func(tx *bolt.Tx) error {
+		for _, bkt := range bkts {
+			_, err := tx.CreateBucketIfNotExists(bkt)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
