@@ -24,7 +24,7 @@ func (t *Tree) ReadAll() ([]byte, error) {
 }
 
 // ValidationChain is used to validate that a leaf belongs to a tree. It
-// includes all the Uncle digests and the position with in the tree.
+// includes all the Uncle digests.
 type ValidationChain []*crypto.Digest
 
 func recursiveRead(b []byte, startAt *int64, d *crypto.Digest, isLeaf bool, f *Forest, rightMost bool, lastLen int) (int, error) {
